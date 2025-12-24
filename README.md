@@ -2,11 +2,12 @@
 Полноценная микросервисная архитектура с API Gateway, двумя сервисами (CRUD и обработчик задач) и брокером сообщений Kafka.
 ## Стек технологий
 - FastAPI - современный веб-фреймворк для Python
-- Kafka - распределенный брокер сообщений для асинхронной коммуникации
+- Apache Kafka - распределенный брокер сообщений для асинхронной коммуникации
 - Docker & Docker Compose - контейнеризация и оркестрация
+- Apache ZooKeeper - координация и управление кластером Kafka
 - Pydantic - валидация данных и сериализация
 - Uvicorn - ASGI сервер для FastAPI
-- 	Kafka UI - веб-интерфейс для мониторинга Kafka
+- Kafka UI - веб-интерфейс для мониторинга Kafka
 ## Структура проекта
 ```text
 project-root/
@@ -34,13 +35,13 @@ project-root/
 ## Установка и запуск
 1. Клонирование репозитория 
 ```bash
-git clone <repository-url>
+git clone https://github.com/k1tok/microservice-test.git
 cd project-root
 ```
 2. Запуск сервисов/остановка
 ```bash
 docker-compose up --build 
-/
+# или
 docker-compose down
 ```
 ## Доступные сервисы
@@ -50,8 +51,8 @@ docker-compose down
 - dict-service	http://localhost:8001	Прямой доступ к CRUD API	8001
 - task-service	http://localhost:8002	Прямой доступ к Kafka API	8002
 - Kafka UI	http://localhost:8080	Мониторинг Kafka	8080
-- Zookeeper	localhost:2181	Для Kafka (внутренний)	2181
-- Kafka Broker	localhost:9092	Брокер сообщений (внутренний)	9092
+- Zookeeper	http://localhost:2181	Для Kafka (внутренний)	2181
+- Kafka Broker	http://localhost:9092	Брокер сообщений (внутренний)	9092
 
 ## API Endpoints
 #### dict-service (CRUD операции)
