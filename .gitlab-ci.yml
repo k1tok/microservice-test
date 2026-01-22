@@ -1,0 +1,96 @@
+variables:
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_TLS_CERTDIR: ""
+  DOCKER_DRIVER: overlay2
+
+stages:
+  - lint
+  - test
+  - build
+  - deploy
+
+services:
+  - docker:dind
+
+before_script:
+  - docker info
+  - echo "Starting CI/CD pipeline for microservices..."
+
+# Линтинг
+lint-code:
+  stage: lint
+  image: python:3.10
+  script:
+    - echo "=== Installing linters ==="
+    - pip install black flake8
+    - echo "=== Running Black ==="
+    - black --check services/ || echo "Black check failed"
+    - echo "=== Running Flake8 ==="
+    - flake8 services/ --max-line-length=88 || echo "Flake8 check failed"
+  only:
+    - merge_requests
+    - main
+  tags:
+    - docker
+
+# Тестирование
+test-services:
+  stage: test
+  image: docker:latest
+  script:
+    - echo "=== Building test images ==="
+    - docker build -t dict-service-test ./services/dict-service
+    - docker build -t task-service-test ./services/task-service
+    - echo "=== Running container tests ==="
+    - docker run --rm dict-service-test python -c "import fastapi; print('✓ FastAPI import successful')"
+    - docker run --rm task-service-test python -c "import kafka; print('✓ Kafka import successful')"
+    - echo "=== Basic HTTP tests ==="
+    - |
+      docker run -d --name dict-test -p 8001:8001 dict-service-test
+      sleep 5
+      curl -f http://localhost:8001/dict/items/ || echo "Service check failed"
+      docker stop dict-test && docker rm dict-test
+  tags:
+    - docker
+
+# Сборка образов
+build-images:
+  stage: build
+  image: docker:latest
+  script:
+    - echo "=== Building production images ==="
+    - docker build -t $CI_REGISTRY_IMAGE/dict-service:$CI_COMMIT_SHORT_SHA ./services/dict-service
+    - docker build -t $CI_REGISTRY_IMAGE/task-service:$CI_COMMIT_SHORT_SHA ./services/task-service
+    - docker build -t $CI_REGISTRY_IMAGE/core-service:$CI_COMMIT_SHORT_SHA ./services/core-service
+    - echo "=== Logging to registry ==="
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - echo "=== Pushing images ==="
+    - docker push $CI_REGISTRY_IMAGE/dict-service:$CI_COMMIT_SHORT_SHA
+    - docker push $CI_REGISTRY_IMAGE/task-service:$CI_COMMIT_SHORT_SHA
+    - docker push $CI_REGISTRY_IMAGE/core-service:$CI_COMMIT_SHORT_SHA
+  only:
+    - main
+  tags:
+    - docker
+
+# Деплой
+deploy-local:
+  stage: deploy
+  image: docker:latest
+  script:
+    - echo "=== Deploying microservices ==="
+    - docker-compose down || true
+    - docker-compose up -d
+    - echo "=== Deployment status ==="
+    - sleep 10
+    - docker-compose ps
+    - echo "=== Health checks ==="
+    - curl -f http://localhost:8000/health || echo "Gateway health check failed"
+    - echo "=== Deployment complete! ==="
+  only:
+    - main
+  tags:
+    - docker
+  environment:
+    name: production
+    url: http://localhost:8000

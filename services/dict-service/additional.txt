@@ -38,10 +38,61 @@ cat services/dict-service/requirements.txt (можн глянуть req_frozen, 
 cat services/task-service/requirements.txt (лучше не катить, прост на всякий если делать нечего будет)
 
 ### GitLab
-docker run -d \
-  --name gitlab-http \
-  --hostname gitlab.local \
-  -p 8080:80 \
-  -p 2222:22 \
-  -e GITLAB_OMNIBUS_CONFIG="external_url 'http://gitlab.local/';" \
-  gitlab/gitlab-ce:latest
+---
+GitLabServer незащищенный формат, объяснять на словах, тк на практике будет пуллиться 1.8гб 
+docker-compose -f docker-compose-gitlab-http.yml up -d (файлик в gitlab-server)
+---
+GitLabRunner
+docker-compose -f docker-compose-runner.yml up -d
+Получил Registration Token из GitLab:
+Открыл http://localhost:8080
+Логин: root, Пароль: admin12345
+Admin → Overview → Runners
+Скопируй "Registration token"
+Регистрация ранера
+docker exec -it gitlab-runner-http gitlab-runner register \
+  --non-interactive \
+  --url "http://gitlab:80" \
+  --registration-token "ВАШ_TOKEN_ЗДЕСЬ" \
+  --executor "docker" \
+  --docker-image "docker:latest" \
+  --docker-volumes "/var/run/docker.sock:/var/run/docker.sock" \
+  --description "local-docker-runner" \
+  --tag-list "docker,local" \
+  --run-untagged="true"
+--- Защищенный формат
+генерируется ssl сертификат (уже лежит в ssl папке)
+(если есть openssl)
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 `
+  -keyout gitlab.key `
+  -out gitlab.crt `
+  -subj "/C=RU/ST=Moscow/L=Moscow/O=Company/CN=gitlab.local"
+
+(если нет)
+@'
+-----BEGIN DEMO PRIVATE KEY-----
+# Это демо-ключ для GitLab HTTPS
+# В реальном проекте: openssl genrsa -out gitlab.key 2048
+-----END DEMO PRIVATE KEY-----
+'@ | Out-File gitlab.key -Encoding ASCII
+
+@'
+-----BEGIN DEMO CERTIFICATE-----
+# Это демо-сертификат для GitLab HTTPS
+# В реальном проекте: openssl req -new -x509 -key gitlab.key -out gitlab.crt
+-----END DEMO CERTIFICATE-----
+'@ | Out-File gitlab.crt -Encoding ASCII
+
+ДАЛЕЕ
+запускаем файл 
+docker-compose -f docker-compose-gitlab-https.yml up -d
+в консоли успех!
+
+
+
+ДЛЯ CI/CD
+Создал файл .gitlab-ci.yml - конфиг пайплайна
+Далее, на гитлабе создаюстя variables:
+- CI_REGISTRY_USER - логин gitlab(k1tok)
+- CI_REGISTRY_PASSWORD - access token (генерируется в профиле, слева есть панелька)
+- CI_REGISTRY - registry.gitlab.com 
