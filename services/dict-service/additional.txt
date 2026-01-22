@@ -95,4 +95,4 @@ docker-compose -f docker-compose-gitlab-https.yml up -d
 Далее, на гитлабе создаюстя variables:
 - CI_REGISTRY_USER - логин gitlab(k1tok)
 - CI_REGISTRY_PASSWORD - access token (генерируется в профиле, слева есть панелька)
-- CI_REGISTRY - registry.gitlab.com 
+- CI_REGISTRY - registry.gitlab.com  
