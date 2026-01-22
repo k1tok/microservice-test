@@ -1,0 +1,47 @@
+black - автоформатирование, 
+flake - проверка стилей,
+isort - сортировка импортов
+CMD ["sh", "-c", "
+echo '=== Running linters ==='
+black --check . && echo '✅ Black: OK' || echo '⚠ Black: Needs formatting'
+flake8 . && echo '✅ Flake8: OK' || echo '⚠ Flake8: Issues found'
+
+echo '=== Running security checks ==='
+bandit -r . -l && echo '✅ Bandit: Security check completed'
+safety check && echo '✅ Safety: Dependencies check completed'
+
+echo '=== Running tests ==='
+python -m pytest test_main.py -v || echo '⚠ Pytest failed'
+
+echo '=== Starting FastAPI application ==='
+uvicorn main:app --host 0.0.0.0 --port 8000
+"]
+
+### Тесты
+docker-compose down
+docker-compose build --no-cache dict-service
+docker-compose run --rm dict-service python -m pytest test_main.py::test_create_item -v
+### Линтеры
+docker-compose exec dict-service black --check .
+docker-compose exec dict-service flake8 .
+
+### Виртуальное окружение и зависимости в коде
+python -m venv venv (создание)
+venv\Scripts\activate (вход)
+cd services/dict-service
+pip install -r requirements.txt (если падает с ошибкой, то просто pip install fastapi==0.104.1)
+pip list
+pip freeze > requirements_frozen.txt
+deactivate
+
+cat services/dict-service/requirements.txt (можн глянуть req_frozen, который создался - там зависимости в виртуальной среде)
+cat services/task-service/requirements.txt (лучше не катить, прост на всякий если делать нечего будет)
+
+### GitLab
+docker run -d \
+  --name gitlab-http \
+  --hostname gitlab.local \
+  -p 8080:80 \
+  -p 2222:22 \
+  -e GITLAB_OMNIBUS_CONFIG="external_url 'http://gitlab.local/';" \
+  gitlab/gitlab-ce:latest
