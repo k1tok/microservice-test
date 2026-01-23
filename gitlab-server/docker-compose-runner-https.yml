@@ -1,0 +1,48 @@
+version: "3.8"
+services:
+  gitlab:
+    image: gitlab/gitlab-ce:latest
+    container_name: gitlab-https
+    hostname: gitlab.local
+    restart: unless-stopped
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url "https://gitlab.local:8443"
+        nginx["ssl_certificate"] = "/etc/gitlab/ssl/gitlab.crt"
+        nginx["ssl_certificate_key"] = "/etc/gitlab/ssl/gitlab.key"
+        nginx["redirect_http_to_https"] = true
+        gitlab_rails["initial_root_password"] = "SecurePass123!"
+    ports:
+      - "8081:80"
+      - "8443:443"
+      - "2223:22"
+    volumes:
+      - gitlab_config_ssl:/etc/gitlab
+      - gitlab_logs_ssl:/var/log/gitlab
+      - gitlab_data_ssl:/var/opt/gitlab
+      - ./ssl:/etc/gitlab/ssl
+    networks:
+      - gitlab-network-ssl
+
+  gitlab-runner:
+    image: gitlab/gitlab-runner:latest
+    container_name: gitlab-runner-https
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - runner_config_ssl:/etc/gitlab-runner
+      - ./ssl:/etc/gitlab-runner/certs
+    networks:
+      - gitlab-network-ssl
+    depends_on:
+      - gitlab
+
+networks:
+  gitlab-network-ssl:
+    driver: bridge
+
+volumes:
+  gitlab_config_ssl:
+  gitlab_logs_ssl:
+  gitlab_data_ssl:
+  runner_config_ssl:

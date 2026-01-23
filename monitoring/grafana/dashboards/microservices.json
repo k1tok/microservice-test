@@ -1,0 +1,16 @@
+{
+  "dashboard": {
+    "title": "FastAPI Microservices",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Services Status",
+        "type": "stat",
+        "targets": [{
+          "expr": "up{job=\"fastapi-services\"}",
+          "legendFormat": "{{instance}}"
+        }]
+      }
+    ]
+  }
+}

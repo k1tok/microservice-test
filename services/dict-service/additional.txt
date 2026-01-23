@@ -1,3 +1,14 @@
+### Первые таски
+#1 создание контейнера из образа
+docker images - образы
+docker-compose up -d dict-service - запуск дикта || docker run -d -p 8001:8001 --name dict-container dict-service
+docker ps - процесс
+#2 создание контейнера из приложения
+cd dict-service
+docker build -t dict-service:latest 
++ показать докерфайл и объяснить
+#3+11 веб-приложение на фастапи
+docker-compose up -d
 black - автоформатирование, 
 flake - проверка стилей,
 isort - сортировка импортов
@@ -87,12 +98,79 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 `
 запускаем файл 
 docker-compose -f docker-compose-gitlab-https.yml up -d
 в консоли успех!
+---
+ЗАЩИЩЕННЫЙ РАННЕР
+docker-compose -f docker-compose-runner-https.yml up -d
+успех!
+
+Быстро вкратце:
+- Гитлаб сервер нужен для облачного хранения кода 
+- Гитлаб ранер автоматически запускает тесты, скрипты, собирает и деплоит приложение
+- СИ/СД - автоматическая доставка и непрерывная интеграция. Если б его не было, каждый раз 
+ручками пришлось бы всё собирать, прогонять тесты и деплоить.
+С ним - пушишь, и начинается автоматические процесс сборки, тестов и деплоя.
+- CI/CD всегда нужен ранер, тк пайплайн указывает маршрут(инструкции), ранер выполняет 
+- Раннер без CI/CD - не работает, создавали, как основу для пайплайна, тк там просто заготовка образов и соединения с гитлаб
 
 
-
-ДЛЯ CI/CD
+### Создание и применение пайплайна доставки приложения CI/CD
 Создал файл .gitlab-ci.yml - конфиг пайплайна
 Далее, на гитлабе создаюстя variables:
 - CI_REGISTRY_USER - логин gitlab(k1tok)
 - CI_REGISTRY_PASSWORD - access token (генерируется в профиле, слева есть панелька)
 - CI_REGISTRY - registry.gitlab.com  
+На гитлабе создаю репу, добавляю к ней коннект по HTTPS
+git remote add gitlab https://gitlab.com/k1tok/microservice-test.git
+Пушу
+git push gitlab main
+
+В Pipelines появляется пайплайн запущенный, но падает, тк авторизацию по номеру нужн, анлак
+
+### k8s
+kubectl apply -f k8s/ - все запустить
+kubectl apply -f k8s/dict-service.yaml - мой дикт, на который стоит манифест
+для теста:
+kubectl get pods
+kubectl get services
+kubectl get deployments
+
+### terraform (я не качал, тк не ставится)
+terraform init
+terraform plan - что будет создано
+terraform apply - создание инфраструктуры
+terraform destroy - удаление всего
+
+### dvc
+инициализируем dvc - dvc init
+у нас есть датасет данных, далее добавляем наш датасет под контроль dvc - dvc add dataset.csv
+после этой процедурый создаётся файл, указывающий(ссылка) на данные dataset.csv.dvc
+далее суём в гит - git add, commit
+меняем данные в датасете
+апдейтем также - dvc add, git add, git commit
+делаем чекаут на старые данные через гит - git checkout HEAD~1 dataset.csv.dvc
+dvc checkout - качаем старые данные
+смотрим dataset.csv - у нас старые данные, до изменения
+
+### Prometheus
+Обновляем docker-compose, main.py в core-service(у меня только там он), requirements, создаём monitoring/prometheus.yaml - конфиг
+Далее:
+docker-compose build core-service - пересобираем
+docker-compose up -d core-service - поднимаем
+http://localhost:8000/metrics - идём на урл, смотрим метрики
+
+### Графана 
+См. папку monitoring -> grafana
+docker-compose-monitoring.yaml в папке monitoring - компоуз файл для работы графана + прометеус
+cd monitoring
+docker-compose -f docker-compose-monitoring.yml up -d
+в браузере:
+Grafana: http://localhost:3000 (admin/admin)
+Prometheus: http://localhost:9090
+
+### DAG Airflow
+cd airflow
+docker-compose -f docker-compose-simple.yml up -d
+сморим http://localhost:8080/health
+airflow UI: http://localhost:8080
+логин: admin / admin
+flower (мониторинг задач): http://localhost:5555
